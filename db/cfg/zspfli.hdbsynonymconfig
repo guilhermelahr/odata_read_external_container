@@ -1,0 +1,8 @@
+{
+  "ECC_ZSPFLI": {
+    "target": {
+      "schema.configure": "ServiceName_1/schema",
+      "object": "ZSPFLI"
+    }
+  }
+}

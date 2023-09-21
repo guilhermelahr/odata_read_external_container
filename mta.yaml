@@ -1,0 +1,92 @@
+_schema-version: "3.1"
+ID: bsa-sample-odata
+description: A simple CAP project.
+version: 1.0.0
+modules:
+- name: bsa-sample-odata-srv
+  type: nodejs
+  path: gen/srv
+  requires:
+  - name: bsa-sample-odata-db
+  - name: bsa-sample-odata-uua
+  provides:
+  - name: srv-api
+    properties:
+      srv-url: ${default-url}
+  parameters:
+    buildpack: nodejs_buildpack
+  build-parameters:
+    builder: npm
+- name: bsa-sample-odata-db-deployer
+  type: hdb
+  path: gen/db
+  requires:
+  - name: bsa-sample-odata-db
+    properties:
+      TARGET_CONTAINER: ~{hdi-container-name}
+  - name: cross-container-service-1
+    group: SERVICE_REPLACEMENTS
+    properties:
+      key: ServiceName_1
+      service: ~{the-service-name}
+  parameters:
+    buildpack: nodejs_buildpack
+- name: bsa-sample-odata-destination-content
+  type: com.sap.application.content
+  requires:
+  - name: bsa-sample-odata-destination-service
+    parameters:
+      content-target: true
+  - name: bsa-sample-odata-uua
+    parameters:
+      service-key:
+        name: bsa-sample-odata-uua-key
+  parameters:
+    content:
+      instance:
+        destinations:
+        - Authentication: OAuth2UserTokenExchange
+          Name: bsa_access_odata_uaa_bsa_sample_odata
+          ServiceInstanceName: bsa-sample-odata-xsuaa-service
+          ServiceKeyName: bsa-sample-odata-uua-key
+          sap.cloud.service: bsa-access-odata
+        existing_destinations_policy: ignore
+  build-parameters:
+    no-source: true
+resources:
+- name: bsa-sample-odata-db
+  type: com.sap.xs.hdi-container
+  parameters:
+    service: hana
+    service-plan: hdi-shared
+  properties:
+    hdi-container-name: ${service-name}
+- name: cross-container-service-1
+  type: org.cloudfoundry.existing-service
+  parameters:
+    service-name: bsa-sample-tables-db
+  properties:
+    the-service-name: ${service-name}
+- name: bsa-sample-odata-destination-service
+  type: org.cloudfoundry.managed-service
+  parameters:
+    config:
+      HTML5Runtime_enabled: true
+      version: 1.0.0
+    service: destination
+    service-name: bsa-sample-odata-destination-service
+    service-plan: lite
+- name: bsa-sample-odata-uua
+  type: org.cloudfoundry.managed-service
+  parameters:
+    path: ./xs-security.json
+    service: xsuaa
+    service-name: bsa-sample-odata-xsuaa-service
+    service-plan: application
+parameters:
+  enable-parallel-deployments: true
+build-parameters:
+  before-all:
+  - builder: custom
+    commands:
+    - npx cds build --production
